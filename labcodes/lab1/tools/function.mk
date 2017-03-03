@@ -6,6 +6,7 @@ OBJPREFIX	:= __objs_
 # list all files in some directories: (#directories, #types)
 listf = $(filter $(if $(2),$(addprefix %.,$(2)),%),\
 		  $(wildcard $(addsuffix $(SLASH)*,$(1))))
+# % is any string
 
 # get .o obj files: (#files[, packet])
 toobj = $(addprefix $(OBJDIR)$(SLASH)$(if $(2),$(2)$(SLASH)),\
@@ -14,6 +15,7 @@ toobj = $(addprefix $(OBJDIR)$(SLASH)$(if $(2),$(2)$(SLASH)),\
 # get .d dependency files: (#files[, packet])
 todep = $(patsubst %.o,%.d,$(call toobj,$(1),$(2)))
 
+# add bin/ as prefix
 totarget = $(addprefix $(BINDIR)$(SLASH),$(1))
 
 # change $(name) to $(OBJPREFIX)$(name): (#names)
