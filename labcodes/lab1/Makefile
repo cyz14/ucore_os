@@ -49,7 +49,13 @@ HOSTCC		:= gcc
 HOSTCFLAGS	:= -g -Wall -O2
 CC		:= $(GCCPREFIX)gcc
 CFLAGS	:= -fno-builtin -Wall -ggdb -m32 -gstabs -nostdinc $(DEFS)
+# -fno-builtin: Don't recognize built-in functions that do not begin with __builtin_ as prefix.
+# -ggdb: generate debug info for gdb
+# -gstabs: Produce debugging information in stabs format (if that is supported), without GDB extensions.
+# -nostdinc: Do not search the standard system directories for header files.
 CFLAGS	+= $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+# -E: stop after the preprocessing stage
+# -x c: specify language is C
 else
 HOSTCC		:= clang
 HOSTCFLAGS	:= -g -Wall -O2
@@ -61,7 +67,9 @@ endif
 CTYPE	:= c S
 
 LD      := $(GCCPREFIX)ld
+# -T scriptfile: Use scriptfile as the linker script.
 LDFLAGS	:= -m $(shell $(LD) -V | grep elf_i386 2>/dev/null)
+# -m emulation: Emulate the emulation linker.  You can list the available emulations with the --verbose or -V options.
 LDFLAGS	+= -nostdlib
 
 OBJCOPY := $(GCCPREFIX)objcopy
@@ -86,6 +94,7 @@ TARGETS	:=
 
 include tools/function.mk
 
+# listf of c type
 listf_cc = $(call listf,$(1),$(CTYPE))
 
 # for cc
@@ -96,6 +105,7 @@ create_target_cc = $(call create_target,$(1),$(2),$(3),$(CC),$(CFLAGS))
 add_files_host = $(call add_files,$(1),$(HOSTCC),$(HOSTCFLAGS),$(2),$(3))
 create_target_host = $(call create_target,$(1),$(2),$(3),$(HOSTCC),$(HOSTCFLAGS))
 
+# change type
 cgtype = $(patsubst %.$(2),%.$(3),$(1))
 objfile = $(call toobj,$(1))
 asmfile = $(call cgtype,$(call toobj,$(1)),o,asm)
