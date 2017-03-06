@@ -107,19 +107,49 @@ dd if=bin/kernel of=bin/ucore.img seek=1 conv=notrunc
 
 2. 一个被系统认为是符合规范的硬盘主引导扇区的特征是什么？
 	according to tools/sign.c
+	主引导扇区内容不超过 510 byte，且地址为 510 处标记为 0x55,地址为 511 处标记为 0xAA
 
 ## 练习二
-lab1_result/Makefile: make lab1-mon
 
+执行 lab1_result: `make lab1-mon`
+自动开始调试，停在 0x7c00: cli 处
+
+```as
+(gdb) x /10i 0x7c02
+=> 0x7c02:	xor    %ax,%ax
+   0x7c04:	mov    %ax,%ds
+   0x7c06:	mov    %ax,%es
+   0x7c08:	mov    %ax,%ss
+   0x7c0a:	in     $0x64,%al
+   0x7c0c:	test   $0x2,%al
+   0x7c0e:	jne    0x7c0a
+   0x7c10:	mov    $0xd1,%al
+   0x7c12:	out    %al,$0x64
+   0x7c14:	in     $0x64,%al
+```
+和 bootasm.S 以及 bootblock.asm 中的命令稍有不同，比如源文件中的指令是 `xorw %ax, %ax `
+
+在 lab1init 里面加上如下语句使 gdb 在每次停下时反汇编当前语句
+```
+define hook-stop
+x/i $pc
+end
+```
 
 ## 练习三：分析bootloader进入保护模式的过程
 
-### 为何开启A20
+bootmain.S
+
+### 为何开启A20，如何开启A20
+等待8042 Input buffer为空；
+发送Write 8042 Output Port （P2）命令到8042 Input buffer；
+等待8042 Input buffer为空；
+将8042 Output Port（P2）得到字节的第2位置1，然后写入8042 Input buffer；
 
 ### 如何初始化GDT表
 
 ### 如何使能和进入保护模式
- bootmain.S
+
 
 ## 练习四
 如何读取硬盘中的信息
