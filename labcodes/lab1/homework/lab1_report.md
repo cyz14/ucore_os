@@ -190,8 +190,89 @@ seta20.2:
 
 ## 练习四
 
-如何读取硬盘中的信息
+如何读取硬盘中的信息?
+```c
+static void readsect(void *dst, uint32_t secno) {
+    // 1. 等待磁盘准备好
+	// wait for disk to be ready
+    waitdisk();
+
+    // 要读写的扇区数，每次读写前，你需要表明你要读写几个扇区。最小是1个扇区
+    outb(0x1F2, 1);                         // count = 1
+    outb(0x1F3, secno & 0xFF); // 如果是LBA模式，就是LBA参数的0-7位
+    outb(0x1F4, (secno >> 8) & 0xFF); // 如果是LBA模式，就是LBA参数的8-15位
+    outb(0x1F5, (secno >> 16) & 0xFF); // 如果是LBA模式，就是LBA参数的16-23位
+    outb(0x1F6, ((secno >> 24) & 0xF) | 0xE0); // 第0~3位：如果是LBA模式就是24-27位 第4位：为0主盘；为1从盘
+    // 2. 发出读取扇区的命令
+	outb(0x1F7, 0x20);                      // cmd 0x20 - read sectors
+    // 状态和命令寄存器。操作时先给命令，再读取，如果不是忙状态就从0x1f0端口读数据
+
+    // 3. 等待磁盘准备好
+	// wait for disk to be ready
+    waitdisk();
+
+    // 4. 把磁盘扇区数据读到指定内存
+    // read a sector
+    insl(0x1F0, dst, SECTSIZE / 4);
+}
+```
+
 判断ELF文件格式，bootmain.c
+```c
+/* file header */
+struct elfhdr {
+    uint32_t e_magic;     // must equal ELF_MAGIC
+    uint8_t e_elf[12];
+    uint16_t e_type;      // 1=relocatable, 2=executable, 3=shared object, 4=core image
+    uint16_t e_machine;   // 3=x86, 4=68K, etc.
+    uint32_t e_version;   // file version, always 1
+    uint32_t e_entry;     // entry point if executable
+    uint32_t e_phoff;     // file position of program header or 0
+    uint32_t e_shoff;     // file position of section header or 0
+    uint32_t e_flags;     // architecture-specific flags, usually 0
+    uint16_t e_ehsize;    // size of this elf header
+    uint16_t e_phentsize; // size of an entry in program header
+    uint16_t e_phnum;     // number of entries in program header or 0
+    uint16_t e_shentsize; // size of an entry in section header
+    uint16_t e_shnum;     // number of entries in section header or 0
+    uint16_t e_shstrndx;  // section number that contains section name strings
+};
+```
+
+```c
+struct proghdr {
+  uint type;    // 段类型
+  uint offset;  // 段相对文件头的偏移值
+  uint va;      // 段的第一个字节将被放到内存中的虚拟地址
+  uint pa;
+  uint filesz;
+  uint memsz;   // 段在内存映像中占用的字节数
+  uint flags;
+  uint align;
+};
+```
+
+加载ELF格式的OS的过程如下
+```c
+// is this a valid ELF?
+if (ELFHDR->e_magic != ELF_MAGIC) {
+	goto bad;
+}
+
+struct proghdr *ph, *eph;
+
+// load each program segment (ignores ph flags)
+ph = (struct proghdr *)((uintptr_t)ELFHDR + ELFHDR->e_phoff);
+eph = ph + ELFHDR->e_phnum;
+// read each program according to header info to virtural address @ph->p_va
+for (; ph < eph; ph ++) {
+	readseg(ph->p_va & 0xFFFFFF, ph->p_memsz, ph->p_offset);
+}
+
+// call the entry point from the ELF header
+// note: does not return
+((void (*)(void))(ELFHDR->e_entry & 0xFFFFFF))();
+```
 
 ## 练习五：实现函数调用堆栈跟踪函数（需要编程）
 
