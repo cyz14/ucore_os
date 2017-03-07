@@ -147,10 +147,31 @@ bootmain.S
 
 ### 为何开启A20，如何开启A20
 
-等待8042 Input buffer为空；
-发送Write 8042 Output Port （P2）命令到8042 Input buffer；
-等待8042 Input buffer为空；
-将8042 Output Port（P2）得到字节的第2位置1，然后写入8042 Input buffer；
+```S
+    # Enable A20:
+    #  For backwards compatibility with the earliest PCs, physical
+    #  address line 20 is tied low, so that addresses higher than
+    #  1MB wrap around to zero by default. This code undoes this.
+	# 等待8042 Input buffer为空；
+seta20.1:
+    inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
+    testb $0x2, %al
+    jnz seta20.1
+
+    # 发送Write 8042 Output Port （P2）命令到8042 Input buffer；
+    movb $0xd1, %al                                 # 0xd1 -> port 0x64
+    outb %al, $0x64                                 # 0xd1 means: write data to 8042's P2 port
+
+    # 等待8042 Input buffer为空；
+seta20.2:
+    inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
+    testb $0x2, %al
+    jnz seta20.2
+
+    # 将8042 Output Port（P2）得到字节的第2位置1，然后写入8042 Input buffer；
+    movb $0xdf, %al                                 # 0xdf -> port 0x60
+    outb %al, $0x60                                 # 0xdf = 11011111, means set P2's A20 bit(the 1 bit) to 1
+```
 
 ### 如何初始化GDT表 & 如何使能和进入保护模式
 
