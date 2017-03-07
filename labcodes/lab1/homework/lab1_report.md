@@ -109,8 +109,8 @@ dd if=bin/kernel of=bin/ucore.img seek=1 conv=notrunc
 ```
 
 2. 一个被系统认为是符合规范的硬盘主引导扇区的特征是什么？
-	according to tools/sign.c
-	主引导扇区内容不超过 510 byte，且地址为 510 处标记为 0x55,地址为 511 处标记为 0xAA
+    according to tools/sign.c
+    主引导扇区内容不超过 510 byte，且地址为 510 处标记为 0x55,地址为 511 处标记为 0xAA
 
 ## 练习二
 
@@ -152,7 +152,7 @@ bootmain.S
     #  For backwards compatibility with the earliest PCs, physical
     #  address line 20 is tied low, so that addresses higher than
     #  1MB wrap around to zero by default. This code undoes this.
-	# 等待8042 Input buffer为空；
+    # 等待8042 Input buffer为空；
 seta20.1:
     inb $0x64, %al                                  # Wait for not busy(8042 input buffer empty).
     testb $0x2, %al
@@ -191,10 +191,11 @@ seta20.2:
 ## 练习四
 
 如何读取硬盘中的信息?
+
 ```c
 static void readsect(void *dst, uint32_t secno) {
     // 1. 等待磁盘准备好
-	// wait for disk to be ready
+    // wait for disk to be ready
     waitdisk();
 
     // 要读写的扇区数，每次读写前，你需要表明你要读写几个扇区。最小是1个扇区
@@ -204,11 +205,11 @@ static void readsect(void *dst, uint32_t secno) {
     outb(0x1F5, (secno >> 16) & 0xFF); // 如果是LBA模式，就是LBA参数的16-23位
     outb(0x1F6, ((secno >> 24) & 0xF) | 0xE0); // 第0~3位：如果是LBA模式就是24-27位 第4位：为0主盘；为1从盘
     // 2. 发出读取扇区的命令
-	outb(0x1F7, 0x20);                      // cmd 0x20 - read sectors
+    outb(0x1F7, 0x20);                      // cmd 0x20 - read sectors
     // 状态和命令寄存器。操作时先给命令，再读取，如果不是忙状态就从0x1f0端口读数据
 
     // 3. 等待磁盘准备好
-	// wait for disk to be ready
+    // wait for disk to be ready
     waitdisk();
 
     // 4. 把磁盘扇区数据读到指定内存
@@ -218,6 +219,7 @@ static void readsect(void *dst, uint32_t secno) {
 ```
 
 判断ELF文件格式，bootmain.c
+
 ```c
 /* file header */
 struct elfhdr {
@@ -253,6 +255,7 @@ struct proghdr {
 ```
 
 加载ELF格式的OS的过程如下
+
 ```c
 // is this a valid ELF?
 if (ELFHDR->e_magic != ELF_MAGIC) {
