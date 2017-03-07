@@ -1,9 +1,11 @@
 # Lab1 实验报告
 
 ## 练习1
+
 1. 操作系统镜像文件ucore.img是如何一步一步生成的？(需要比较详细地解释Makefile中每一条相关命令和命令参数的含义，以及说明命令导致的结果)
 
 ### create kernel
+
 ```makefile
 # 设置kernel的include查找文件夹
 KINCLUDE	+= kern/debug/ \
@@ -45,6 +47,7 @@ $(call create_target,kernel)
 ```
 
 ### create bootblock
+
 ```makefile
 # list c files from boot/
 bootfiles = $(call listf_cc,boot)
@@ -114,7 +117,7 @@ dd if=bin/kernel of=bin/ucore.img seek=1 conv=notrunc
 执行 lab1_result: `make lab1-mon`
 自动开始调试，停在 0x7c00: cli 处
 
-```as
+```S
 (gdb) x /10i 0x7c02
 => 0x7c02:	xor    %ax,%ax
    0x7c04:	mov    %ax,%ds
@@ -127,10 +130,12 @@ dd if=bin/kernel of=bin/ucore.img seek=1 conv=notrunc
    0x7c12:	out    %al,$0x64
    0x7c14:	in     $0x64,%al
 ```
-和 bootasm.S 以及 bootblock.asm 中的命令稍有不同，比如源文件中的指令是 `xorw %ax, %ax `
+
+和 bootasm.S 以及 bootblock.asm 中的命令稍有不同，比如源文件中的指令是 `xorw %ax, %ax`
 
 在 lab1init 里面加上如下语句使 gdb 在每次停下时反汇编当前语句
-```
+
+```sh
 define hook-stop
 x/i $pc
 end
@@ -141,21 +146,34 @@ end
 bootmain.S
 
 ### 为何开启A20，如何开启A20
+
 等待8042 Input buffer为空；
 发送Write 8042 Output Port （P2）命令到8042 Input buffer；
 等待8042 Input buffer为空；
 将8042 Output Port（P2）得到字节的第2位置1，然后写入8042 Input buffer；
 
-### 如何初始化GDT表
+### 如何初始化GDT表 & 如何使能和进入保护模式
 
-### 如何使能和进入保护模式
+```S
+    # Switch from real to protected mode, using a bootstrap GDT
+    # and segment translation that makes virtual addresses
+    # identical to physical addresses, so that the
+    # effective memory map does not change during the switch.
+    lgdt gdtdesc             # 把 gdtdesc 的值 0x17 load 进 gdt
+    # 设置 CR0 第一位为 1 开启保护模式
+    movl %cr0, %eax
+    orl $CR0_PE_ON, %eax
+    movl %eax, %cr0
+```
 
 
 ## 练习四
+
 如何读取硬盘中的信息
 判断ELF文件格式，bootmain.c
 
 ## 练习五：实现函数调用堆栈跟踪函数（需要编程）
+
 填写两句代码
 
 ## 练习六：完善中断初始化和处理（需要编程）
