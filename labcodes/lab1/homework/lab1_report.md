@@ -276,7 +276,60 @@ for (; ph < eph; ph ++) {
 
 ## 练习五：实现函数调用堆栈跟踪函数（需要编程）
 
-填写两句代码
+实现过程基本按照注释中的提示步骤。首先调用 read_ebp() read_eip() 可以得到当前的 ebp 和 eip，然后循环，根据当前 ebp 可以输出当前 stackframe 的信息，然后重点在于更新 ebp 和 eip。因为 ebp 指向的即为上一层函数的 ebp，ebp+4 处即为 eip 的值，所以需要有下面两句
+```c
+ebp = *(uint32_t*)(ebp);
+eip = *(uint32_t*)(ebp+4);
+```
+
+我一开始又加了一个 depth 来控制stack的深度不会超过 STACKFRAME_DEPTH.
+
+```c
+void
+print_stackframe(void) {
+     uint32_t ebp = read_ebp();
+     uint32_t eip = read_eip();
+     uint32_t depth = 0;
+     while (ebp && depth < STACKFRAME_DEPTH) {
+         cprintf("ebp:0x%08x eip:0x%08x args:0x%08x 0x%08x 0x%08x 0x%08x", \
+            ebp, eip, *(uint32_t*)(ebp+0), *(uint32_t*)(ebp+4), *(uint32_t*)(ebp+8), *(uint32_t*)(ebp+12));
+         cprintf("\n");
+         print_debuginfo(eip-1);
+         ebp = *(uint32_t*)(ebp);
+         eip = *(uint32_t*)(ebp+4);
+         depth++;
+     }
+}
+```
+
+我的运行结果是
+```s
+Special kernel symbols:
+  entry  0x00100000 (phys)
+  etext  0x001032b5 (phys)
+  edata  0x0010ea16 (phys)
+  end    0x0010fd20 (phys)
+Kernel executable memory footprint: 64KB
+ebp:0x00007b08 eip:0x001009a7 args:0x00007b18 0x00100c87 0x00010094 0x00000000
+    kern/debug/kdebug.c:306: print_stackframe+22
+ebp:0x00007b18 eip:0x00100092 args:0x00007b38 0x00100092 0x00000000 0x00000000
+    kern/init/init.c:48: grade_backtrace2+33
+ebp:0x00007b38 eip:0x001000bb args:0x00007b58 0x001000bb 0x00000000 0x00007b60
+    kern/init/init.c:53: grade_backtrace1+38
+ebp:0x00007b58 eip:0x001000d9 args:0x00007b78 0x001000d9 0x00000000 0xffff0000
+    kern/init/init.c:58: grade_backtrace0+23
+ebp:0x00007b78 eip:0x001000fe args:0x00007b98 0x001000fe 0x00000000 0x00100000
+    kern/init/init.c:63: grade_backtrace+34
+ebp:0x00007b98 eip:0x00100055 args:0x00007bc8 0x00100055 0x001032dc 0x001032c0
+    kern/init/init.c:28: kern_init+84
+ebp:0x00007bc8 eip:0x00007d68 args:0x00007bf8 0x00007d68 0x00000000 0x00000000
+    <unknow>: -- 0x00007d67 --
+ebp:0x00007bf8 eip:0x00007c4f args:0x00000000 0x00007c4f 0xc031fcfa 0xc08ed88e
+    <unknow>: -- 0x00007c4e --
+++ setup timer interrupts
+```
+
+
 
 ## 练习六：完善中断初始化和处理（需要编程）
 
