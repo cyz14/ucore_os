@@ -9,7 +9,7 @@
    usually split, and the remainder added to the list as another free block.
    Please see Page 196~198, Section 8.2 of Yan Wei Min's chinese book "Data Structure -- C programming language"
 */
-// LAB2 EXERCISE 1: YOUR CODE
+// LAB2 EXERCISE 1: 2014011423
 // you should rewrite functions: default_init,default_init_memmap,default_alloc_pages, default_free_pages.
 /*
  * Details of FFMA
@@ -31,7 +31,7 @@
  *                  p->ref should be 0, because now p is free and no reference.
  *                  We can use p->page_link to link this page to free_list, (such as: list_add_before(&free_list, &(p->page_link)); )
  *              Finally, we should sum the number of free mem block: nr_free+=n
- * (4) default_alloc_pages: search find a first free block (block size >=n) in free list and reszie the free block, return the addr
+ * (4) default_alloc_pages: search find a first free block (block size >=n) in free list and resize the free block, return the addr
  *              of malloced block.
  *              (4.1) So you should search freelist like this:
  *                       list_entry_t le = &free_list;
@@ -40,7 +40,7 @@
  *                 (4.1.1) In while loop, get the struct page and check the p->property (record the num of free block) >=n?
  *                       struct Page *p = le2page(le, page_link);
  *                       if(p->property >= n){ ...
- *                 (4.1.2) If we find this p, then it' means we find a free block(block size >=n), and the first n pages can be malloced.
+ *                 (4.1.2) If we find this p, then it means we find a free block(block size >=n), and the first n pages can be malloced.
  *                     Some flag bits of this page should be setted: PG_reserved =1, PG_property =0
  *                     unlink the pages from free_list
  *                     (4.1.2.1) If (p->property >n), we should re-caluclate number of the the rest of this free block,
@@ -59,21 +59,39 @@ free_area_t free_area;
 #define free_list (free_area.free_list)
 #define nr_free (free_area.nr_free)
 
+// free_list is used to record the free mem blocks.
+// nr_free is the total number for free mem blocks.
 static void
 default_init(void) {
     list_init(&free_list);
     nr_free = 0;
 }
 
+// CALL GRAPH: kern_init --> pmm_init-->page_init-->init_memmap--> pmm_manager->init_memmap
+// This fun is used to init a free block (with parameter: addr_base, page_number).
+/* First you should init each page (in memlayout.h) in this free block, include:
+ *     p->flags should be set bit PG_property (means this page is valid. In pmm_init fun (in pmm.c),
+ *     the bit PG_reserved is setted in p->flags)
+ *     if this page  is free and is not the first page of free block, p->property should be set to 0.
+ *     if this page  is free and is the first page of free block, p->property should be set to total num of block.
+ *     p->ref should be 0, because now p is free and no reference.
+ *     We can use p->page_link to link this page to free_list, (such as: list_add_before(&free_list, &(p->page_link)); )
+ * Finally, we should sum the number of free mem block: nr_free+=n
+ */
 static void
 default_init_memmap(struct Page *base, size_t n) {
     assert(n > 0);
     struct Page *p = base;
     for (; p != base + n; p ++) {
+        // if this bit=1: the Page is reserved for kernel, cannot be used in alloc/free_pages; otherwise, this bit=0 
+        // assert: the page is not reserved
         assert(PageReserved(p));
+        // if this page  is free and is not the first page of free block, p->property should be set to 0.
         p->flags = p->property = 0;
+        // p->ref should be 0, because now p is free and no reference.
         set_page_ref(p, 0);
     }
+    // if this page  is free and is the first page of free block, p->property should be set to total num of block.
     base->property = n;
     SetPageProperty(base);
     nr_free += n;
@@ -95,19 +113,30 @@ default_alloc_pages(size_t n) {
             break;
         }
     }
+    // If we find this p, then it means we find a free block(block size >=n), 
+    // and the first n pages can be malloced.
+    // Some flag bits of this page should be setted: PG_reserved =1, PG_property =0
+    // unlink the pages from free_list
     if (page != NULL) {
         list_del(&(page->page_link));
+        // If (p->property >n), we should re-caluclate number of the the rest of this free block,
+        // (such as: le2page(le,page_link))->property = p->property - n;)
         if (page->property > n) {
             struct Page *p = page + n;
             p->property = page->property - n;
             list_add(&free_list, &(p->page_link));
-    }
+        }
         nr_free -= n;
         ClearPageProperty(page);
     }
     return page;
 }
 
+// relink the pages into  free list, maybe merge small free blocks into big free blocks.
+// (5.1) according the base addr of withdrawed blocks, search free list, find the correct position
+//       (from low to high addr), and insert the pages. (may use list_next, le2page, list_add_before)
+// (5.2) reset the fields of pages, such as p->ref, p->flags (PageProperty)
+// (5.3) try to merge low addr or high addr blocks. Notice: should change some pages's p->property correctly.
 static void
 default_free_pages(struct Page *base, size_t n) {
     assert(n > 0);
@@ -127,6 +156,7 @@ default_free_pages(struct Page *base, size_t n) {
             base->property += p->property;
             ClearPageProperty(p);
             list_del(&(p->page_link));
+            // continue merge is possible, so not break
         }
         else if (p + p->property == base) {
             p->property += base->property;
