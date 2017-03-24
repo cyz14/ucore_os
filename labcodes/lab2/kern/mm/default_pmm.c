@@ -129,8 +129,7 @@ default_alloc_pages(size_t n) {
             if (p->property > n) {
                 (le2page(le, page_link))->property = p->property - n;
             }
-            ClearPageProperty(p);
-            SetPageReserved(p);
+            
             nr_free -= n;
             return p;
         }
@@ -257,7 +256,6 @@ default_check(void) {
     assert(total == nr_free_pages());
 
     basic_check();
-    // cprintf("Basic check pass.\n");
 
     struct Page *p0 = alloc_pages(5), *p1, *p2;
     assert(p0 != NULL);
