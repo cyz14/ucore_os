@@ -363,7 +363,7 @@ pmm_init(void) {
 // return vaule: the kernel virtual address of this pte
 pte_t *
 get_pte(pde_t *pgdir, uintptr_t la, bool create) {
-    /* LAB2 EXERCISE 2: YOUR CODE
+    /* LAB2 EXERCISE 2: 2014011423
      *
      * If you need to visit a physical address, please use KADDR()
      * please read pmm.h for useful macros
@@ -396,6 +396,19 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
+    pde_t *pdep = &pgdir[PDX(la)]; // page index
+    if (!(*pdep & PTE_P)) {        // not present
+        struct Page *page;
+        // not create or alloc fails
+        if (!create || (page = alloc_page()) == NULL) {
+            return NULL;
+        }
+        set_page_ref(page, 1);
+        uintptr_t pa = page2pa(page);
+        memset(KADDR(pa), 0, PGSIZE);
+        *pdep = pa | PTE_P | PTE_U | PTE_W;
+    }
+    return &((pte_t *)KADDR(PDE_ADDR(*pdep)))[PTX(la)];
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -411,12 +424,12 @@ get_page(pde_t *pgdir, uintptr_t la, pte_t **ptep_store) {
     return NULL;
 }
 
-//page_remove_pte - free an Page sturct which is related linear address la
+//page_remove_pte - free an Page struct which is related linear address la
 //                - and clean(invalidate) pte which is related linear address la
 //note: PT is changed, so the TLB need to be invalidate 
 static inline void
 page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
-    /* LAB2 EXERCISE 3: YOUR CODE
+    /* LAB2 EXERCISE 3: 2014011423
      *
      * Please check if ptep is valid, and tlb must be manually updated if mapping is updated
      *
@@ -426,7 +439,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
      * MACROs or Functions:
      *   struct Page *page pte2page(*ptep): get the according page from the value of a ptep
      *   free_page : free a page
-     *   page_ref_dec(page) : decrease page->ref. NOTICE: ff page->ref == 0 , then this page should be free.
+     *   page_ref_dec(page) : decrease page->ref. NOTICE: if page->ref == 0 , then this page should be free.
      *   tlb_invalidate(pde_t *pgdir, uintptr_t la) : Invalidate a TLB entry, but only if the page tables being
      *                        edited are the ones currently in use by the processor.
      * DEFINEs:
@@ -441,6 +454,15 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    
+    if (*ptep && PTE_P) {
+        struct Page *p = pte2page(*ptep);
+        if (page_ref_dec(p) == 0) {
+            free_page(p);
+        }
+        *ptep = 0;
+        tlb_invalidate(pgdir, la);
+    }
 }
 
 void
@@ -459,7 +481,7 @@ unmap_range(pde_t *pgdir, uintptr_t start, uintptr_t end) {
         }
         start += PGSIZE;
     } while (start != 0 && start < end);
-}
+    }
 
 void
 exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end) {
@@ -589,10 +611,10 @@ pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm) {
         }
         if (swap_init_ok){
             if(check_mm_struct!=NULL) {
-                swap_map_swappable(check_mm_struct, la, page, 0);
-                page->pra_vaddr=la;
-                assert(page_ref(page) == 1);
-                //cprintf("get No. %d  page: pra_vaddr %x, pra_link.prev %x, pra_link_next %x in pgdir_alloc_page\n", (page-pages), page->pra_vaddr,page->pra_page_link.prev, page->pra_page_link.next);
+            swap_map_swappable(check_mm_struct, la, page, 0);
+            page->pra_vaddr=la;
+            assert(page_ref(page) == 1);
+            //cprintf("get No. %d  page: pra_vaddr %x, pra_link.prev %x, pra_link_next %x in pgdir_alloc_page\n", (page-pages), page->pra_vaddr,page->pra_page_link.prev, page->pra_page_link.next);
             } 
             else  {  //now current is existed, should fix it in the future
                 //swap_map_swappable(current->mm, la, page, 0);
