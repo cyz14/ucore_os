@@ -109,6 +109,22 @@ alloc_proc(void) {
      *       uint32_t wait_state;                        // waiting state
      *       struct proc_struct *cptr, *yptr, *optr;     // relations between processes
 	 */
+        proc->state  = PROC_UNINIT;
+        proc->pid    = -1;
+        proc->runs   = 0;
+        proc->kstack = 0;
+        proc->need_resched = 0;
+        proc->parent = NULL;
+        proc->mm = NULL;
+        memset((void*)&(proc->context), 0, sizeof(struct context));
+        proc->tf = NULL;
+        proc->cr3 = boot_cr3;
+        proc->flags = 0;
+        set_proc_name(proc, "");
+        proc->wait_state = 0;
+        proc->cptr = NULL;
+        proc->yptr = NULL;
+        proc->optr = NULL;
     }
     return proc;
 }
@@ -399,10 +415,15 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         goto fork_out;
     }
     
-    proc->parent = current;
     if (setup_kstack(proc)!=0) {
         goto bad_fork_cleanup_kstack;
     }
+
+    if (copy_mm(clone_flags, proc)!=0) {
+        goto bad_fork_cleanup_proc;
+    }
+
+    copy_thread(proc, stack, tf);
 
 	//LAB5 YOUR CODE : (update LAB4 steps)
    /* Some Functions
@@ -411,7 +432,23 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
 	*    update step 1: set child proc's parent to current process, make sure current process's wait_state is 0
 	*    update step 5: insert proc_struct into hash_list && proc_list, set the relation links of process
     */
-	
+    proc->parent = current;
+    assert(current->wait_state == 0);
+    
+    set_links(proc);
+
+    bool intr_flag;
+    local_intr_save(intr_flag);
+    {
+        proc->pid = get_pid();
+        hash_proc(proc);
+        list_add(&proc_list, &(proc->list_link));
+        // set_links(proc);
+        // nr_process++;
+    }
+    local_intr_restore(intr_flag);
+    wakeup_proc(proc);
+    ret = proc->pid;
 fork_out:
     return ret;
 

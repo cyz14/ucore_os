@@ -106,15 +106,16 @@ default_alloc_pages(size_t n) {
     if (n > nr_free) {
         return NULL;
     }
+    list_entry_t *le;
+    le = &free_list;
 
-    list_entry_t *le = &free_list;
-    while ((le = list_next(le)) != &free_list) {
-        struct Page *p = le2page(le, page_link);
+    while((le=list_next(le)) != &free_list) {
+      struct Page *p = le2page(le, page_link);
         // If we find this p, then it means we find a free block(block size >=n), 
         // and the first n pages can be malloced.
-        if (p->property >= n) {
+      if(p->property >= n){
             // unlink the pages from free_list
-            int i;
+        int i;
             list_entry_t *le_next;
             for (i = 0; i < n; i++) {
                 le_next = list_next(le);
@@ -184,6 +185,7 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
     nr_free += n;
+    return ;
 }
 
 static size_t
