@@ -37,7 +37,6 @@ proc_stride_comp_f(void *a, void *b)
 static void
 stride_init(struct run_queue *rq) {
      /* LAB6: 2014011423 */
-     list_init(&(rq->run_list));
      rq->lab6_run_pool = NULL;
      rq->proc_num = 0;
 }
