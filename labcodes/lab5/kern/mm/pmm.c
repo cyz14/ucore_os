@@ -480,7 +480,7 @@ unmap_range(pde_t *pgdir, uintptr_t start, uintptr_t end) {
         }
         start += PGSIZE;
     } while (start != 0 && start < end);
-    }
+}
 
 void
 exit_range(pde_t *pgdir, uintptr_t start, uintptr_t end) {

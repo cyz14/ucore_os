@@ -16,6 +16,7 @@
 #include <sched.h>
 #include <sync.h>
 #include <proc.h>
+#include <default_sched.h>
 
 #define TICK_NUM 100
 
@@ -232,6 +233,7 @@ trap_dispatch(struct trapframe *tf) {
          *    Every TICK_NUM cycle, you should set current process's current->need_resched = 1
          */
         ticks ++;
+        default_sched_class.proc_tick(NULL, current);
         assert(current != NULL);
         break;
     case IRQ_OFFSET + IRQ_COM1:
