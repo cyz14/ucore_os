@@ -43,7 +43,7 @@ procedure take_chopsticks(i)
   {
     DOWN(me);               # critical section 
     pflag[i] := HUNGRY;
-    test[i];
+    test(i);
     UP(me);                 # end critical section 
     DOWN(s[i])              # Eat if enabled 
    }
@@ -156,6 +156,13 @@ int philosopher_using_semaphore(void * arg) /* i：哲学家号码，从0到N-1 
  *      }
  *   }
  *
+ *  void test(int i) {
+ *      if (state[LEFT] != eating && state[i] == hungry && state[RIGHT] != eating) {
+ *          state[i] = eating;
+ *          self[i].signal();
+ *      }
+ *  }
+ *
  *   void init() {
  *      for (int i = 0; i < 5; i++)
  *         state[i] = thinking;
@@ -181,9 +188,14 @@ void phi_test_condvar (i) {
 void phi_take_forks_condvar(int i) {
      down(&(mtp->mutex));
 //--------into routine in monitor--------------
-     // LAB7 EXERCISE1: YOUR CODE
+     // LAB7 EXERCISE1: 2014011423
      // I am hungry
      // try to get fork
+     state_condvar[i] = HUNGRY;
+     if (state_condvar[LEFT] != EATING && state_condvar[RIGHT] != EATING)
+         state_condvar[i] = EATING;
+     else
+         cond_wait(&mtp->cv[i]);
 //--------leave routine in monitor--------------
       if(mtp->next_count>0)
          up(&(mtp->next));
@@ -195,9 +207,18 @@ void phi_put_forks_condvar(int i) {
      down(&(mtp->mutex));
 
 //--------into routine in monitor--------------
-     // LAB7 EXERCISE1: YOUR CODE
+     // LAB7 EXERCISE1: 2014011423
      // I ate over
      // test left and right neighbors
+     state_condvar[i] = THINKING;
+     if (state_condvar[LEFT] == HUNGRY && state_condvar[(i+3)%5] != EATING) {
+         state_condvar[LEFT] = EATING;
+         cond_signal(&(mtp->cv[LEFT]));
+     }
+     if (state_condvar[RIGHT] == HUNGRY && state_condvar[(i+2)%5] != EATING) {
+         state_condvar[RIGHT] = EATING;
+         cond_signal(&(mtp->cv[RIGHT]));
+     }
 //--------leave routine in monitor--------------
      if(mtp->next_count>0)
         up(&(mtp->next));
