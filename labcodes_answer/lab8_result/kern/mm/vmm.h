@@ -14,7 +14,7 @@ struct mm_struct;
 // the virtual continuous memory area(vma)
 struct vma_struct {
     struct mm_struct *vm_mm; // the set of vma using the same PDT 
-    uintptr_t vm_start;      //    start addr of vma    
+    uintptr_t vm_start;      // start addr of vma
     uintptr_t vm_end;        // end addr of vma
     uint32_t vm_flags;       // flags of vma
     list_entry_t list_link;  // linear list link which sorted by start addr of vma
